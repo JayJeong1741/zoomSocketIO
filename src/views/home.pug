@@ -3,8 +3,25 @@ html(lang="en")
   head
     meta(charset="UTF-8")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
-    title Document
+    title Teachable Machine Pose Model
+    style.
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+      }
+      #canvas {
+        border: 1px solid #ddd;
+        margin-bottom: 20px;
+      }
+      #label-container {
+        font-size: 18px;
+        margin-top: 20px;
+      }
   body
+<<<<<<< HEAD
     main
         div#welcome
             form
@@ -13,82 +30,121 @@ html(lang="en")
     script(src="/socket.io/socket.io.js")
     script(src="/public/js/app.js")
     div Teachable Machine Pose Model
+=======
+    h1 Teachable Machine Pose Model
+>>>>>>> 383fb976e37919a549f87f0512a479d1b01b958e
     div
-      canvas(id="canvas")
-    div#label-container
+      canvas#canvas
+    #label-container
     script(src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js")
     script(src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js")
     script.
-      // More API functions here:
-      // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/pose
-
-      // the link to your model provided by Teachable Machine export panel
       const URL = "http://localhost:3000/public/model/";
       let model, webcam, ctx, labelContainer, maxPredictions;
 
-      // This will execute init() once the DOM is fully loaded
+      let frameCount = 0;
+      let lastPredictions = [];
+      let lastPose;
+      const PREDICTION_INTERVAL = 9; // 10프레임마다 예측
+      const SMOOTHING_WINDOW = 3; // 최근 5개의 예측을 평균화
+      const UPDATE_THRESHOLD = 0.05; // 10% 이상 변화가 있을 때만 업데이트
+
       document.addEventListener("DOMContentLoaded", init);
 
       async function init() {
-          const modelURL = URL + "model.json";
-          const metadataURL = URL + "metadata.json";
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-          // load the model and metadata
-          model = await tmPose.load(modelURL, metadataURL);
-          maxPredictions = model.getTotalClasses();
+        // Load the model and metadata
+        model = await tmPose.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
 
-          // Convenience function to setup a webcam
-          const size = 200;
-          const flip = true; // whether to flip the webcam
-          webcam = new tmPose.Webcam(size, size, flip); // width, height, flip
-          await webcam.setup(); // request access to the webcam
-          await webcam.play();
-          window.requestAnimationFrame(loop);
+        // Setup webcam with reduced resolution
+        const size = 300; // 해상도를 낮추어 프레임 속도 개선
+        const flip = true;
+        webcam = new tmPose.Webcam(size, size, flip);
+        await webcam.setup(); // 웹캠 접근 요청
+        await webcam.play();
 
-          // append/get elements to the DOM
-          const canvas = document.getElementById("canvas");
-          canvas.width = size; canvas.height = size;
-          ctx = canvas.getContext("2d");
-          labelContainer = document.getElementById("label-container");
-          for (let i = 0; i < maxPredictions; i++) { // and class labels
-              labelContainer.appendChild(document.createElement("div"));
-          }
+        // Initialize canvas and context
+        const canvas = document.getElementById("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        ctx = canvas.getContext("2d");
+
+        // Initialize label container
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) {
+          labelContainer.appendChild(document.createElement("div"));
+        }
+
+        // Start the loop
+        window.requestAnimationFrame(loop);
       }
 
-      async function loop(timestamp) {
-          webcam.update(); // update the webcam frame
+      async function loop() {
+        webcam.update(); // 웹캠 프레임 업데이트
+        frameCount++;
+
+        if (frameCount % PREDICTION_INTERVAL === 0) {
           await predict();
-          window.requestAnimationFrame(loop);
+        }
+
+        drawPose(lastPose);
+        window.requestAnimationFrame(loop);
       }
 
       async function predict() {
-          // Prediction #1: run input through posenet
-          // estimatePose can take in an image, video or canvas html element
-          const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-          // Prediction 2: run input through teachable machine classification model
-          const prediction = await model.predict(posenetOutput);
+        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+        const prediction = await model.predict(posenetOutput);
+       
+        lastPose = pose;
+        lastPredictions.push(prediction);
+        if (lastPredictions.length > SMOOTHING_WINDOW) {
+          lastPredictions.shift();
+        }
 
-          for (let i = 0; i < maxPredictions; i++) {
-              const classPrediction =
-                  prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-              labelContainer.childNodes[i].innerHTML = classPrediction;
+        const smoothedPrediction = smoothPredictions(lastPredictions);
+        updateLabelContainer(smoothedPrediction);
+      }
+
+      function smoothPredictions(predictions) {
+        return predictions[0].map((_, classIndex) => {
+          const sum = predictions.reduce((acc, pred) => acc + pred[classIndex].probability, 0);
+          return {
+            className: predictions[0][classIndex].className,
+            probability: sum / predictions.length
+          };
+        });
+      }
+
+      function updateLabelContainer(smoothedPrediction) {
+        for (let i = 0; i < maxPredictions; i++) {
+          const classPrediction =
+            smoothedPrediction[i].className + ": " + smoothedPrediction[i].probability.toFixed(2);
+          const currentValue = labelContainer.childNodes[i].innerHTML;
+          const currentProbability = parseFloat(currentValue.split(": ")[1] || "0");
+         
+          if (Math.abs(smoothedPrediction[i].probability - currentProbability) > UPDATE_THRESHOLD) {
+            labelContainer.childNodes[i].innerHTML = classPrediction;
           }
-
-          // finally draw the poses
-          drawPose(pose);
+        }
       }
 
       function drawPose(pose) {
-          if (webcam.canvas) {
-              ctx.drawImage(webcam.canvas, 0, 0);
-              // draw the keypoints and skeleton
-              if (pose) {
-                  const minPartConfidence = 0.5;
-                  tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
-                  tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
-              }
+        if (webcam.canvas) {
+          ctx.drawImage(webcam.canvas, 0, 0);
+          if (pose) {
+            const minPartConfidence = 0.5;
+            tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+            tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
           }
+<<<<<<< HEAD
       }
     
 
       
+=======
+        }
+      }
+>>>>>>> 383fb976e37919a549f87f0512a479d1b01b958e
