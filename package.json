@@ -14,8 +14,10 @@
     "nodemon": "^3.1.7"
   },
   "dependencies": {
+    "@tensorflow/tfjs-tflite": "^0.0.1-alpha.10",
     "express": "^4.21.1",
     "pug": "^3.0.3",
+    "socket.io": "^4.8.0",
     "ws": "^8.18.0"
   }
 }

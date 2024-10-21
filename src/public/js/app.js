@@ -1,16 +1,16 @@
-const socket = new WebSocket("ws://localhost:3000"); //여기서 socket은 서버로의 연결을 뜻함 
+const socket = io();
 
-socket.addEventListener("open", () => {
-    console.log("Connected to Server");
-});
+ const welcome = document.getElementById("welcome");
+ const form = welcome.querySelector("form");
 
-socket.addEventListener("message", (message) => {
-    console.log("New Message : ", message.data);  
-});
-socket.addEventListener("close", () => {
-    console.log("Close Connection to Server");
-});
 
-setTimeout(() => {
-    socket.send("Hello from the Server");
-},10000); 
+function handleRoomSubmit(event){
+    event.preventDefault(); 
+    const input = form.querySelector("input");
+    socket.emit("enter_room", {payload: input.value}, () => {
+        console.log("server is done!");
+    }   );
+    input.value="";
+}
+
+ form.addEventListener("submit", handleRoomSubmit);

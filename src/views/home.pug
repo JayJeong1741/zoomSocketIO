@@ -5,6 +5,12 @@ html(lang="en")
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
     title Document
   body
+    main
+        div#welcome
+            form
+                input(type="text", placeholder='Room name', required) 
+                button Enter Room
+    script(src="/socket.io/socket.io.js")
     script(src="/public/js/app.js")
     div Teachable Machine Pose Model
     div
@@ -83,5 +89,6 @@ html(lang="en")
               }
           }
       }
+    
 
       
