@@ -21,18 +21,24 @@ html(lang="en")
         margin-top: 20px;
       }
   body
-<<<<<<< HEAD
     main
         div#welcome
-            form
+            form#name
+                input(type="text", placeholder='Nickname', required) 
+                button Save
+                
+            form#roomName
                 input(type="text", placeholder='Room name', required) 
                 button Enter Room
+        div#room
+            h3
+            ul
+            form#message
+                input(type="text", placeholder='message', required) 
+                button Send
     script(src="/socket.io/socket.io.js")
     script(src="/public/js/app.js")
     div Teachable Machine Pose Model
-=======
-    h1 Teachable Machine Pose Model
->>>>>>> 383fb976e37919a549f87f0512a479d1b01b958e
     div
       canvas#canvas
     #label-container
@@ -139,12 +145,8 @@ html(lang="en")
             tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
             tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
           }
-<<<<<<< HEAD
+        }
       }
     
 
       
-=======
-        }
-      }
->>>>>>> 383fb976e37919a549f87f0512a479d1b01b958e
