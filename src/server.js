@@ -13,53 +13,16 @@ app.get("/*", (req,res) => res.redirect("/"));
 const handleListen = () => console.log('Listening on http://localhost:3000');
 
 const httpServer = http.createServer(app);//create http server
-const wsServer =SocketIO(httpServer);
+const wsServer = SocketIO(httpServer);
 
-wsServer.on("connection" , (socket) => {
-    socket["nickname"] = "Anonymous";
-    socket.on("enter_room", (roomName,done) => {
+ wsServer.on("connection", socket => {
+    socket.on("join_room", (roomName, done) => {
         socket.join(roomName);
         done();
-        socket.to(roomName).emit("welcome", socket.nickname);        
+        socket.to(roomName).emit("welcome");
     });
-    socket.on("disconnecting", () => {
-        socket.rooms.forEach((room) => 
-            socket.to(room).emit("Bye", socket.nickname));
-    }); 
     
-    socket.on("new_message", (msg, room, done) => {
-        socket.to(room).emit("new_message", `${socket.nickname}: ${msg}`);
-        done();
-    });
-
-    socket.on("nickname", (nickname) => {
-        socket["nickname"] = nickname;
-    });
-});
-
-  
-//http server 위에 websocket server 만듦 => 하나만 만들어도 되는데 http도 쓸거면 같이 
-//둘 다 만들면 해당 서버는 ws, https 요청 모두 처리 가능 
-//const wss = new WebSocket.Server({server});//create websocket server
-/*const sockets = [];
-
-wss.on("connection", (socket) =>{
-    sockets.push(socket);
-    socket["nickname"] = "Anonymous";
-    console.log("Connected to Browser");
-    socket.on("close", ()=> console.log("Disconnected from the Browser"));
-    socket.on("message",(msg) => {
-          const message = JSON.parse(msg);
-          switch (message.type){
-            case "new_message":
-                sockets.forEach((aSocket) => 
-                    aSocket.send(`${socket.nickname}: ${message.payload}`));
-            case "nickname":
-                socket["nickname"] = message.payload;
-          }
-    }); 
-});//server.js의 socket은 연결된 브라우저를 뜻함
-*/
+ });
 
 httpServer.listen(3000, handleListen);  
 
