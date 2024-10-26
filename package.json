@@ -22,5 +22,8 @@
     "pug": "^3.0.3",
     "socket.io": "^4.8.0",
     "ws": "^8.18.0"
+  },
+  "scripts": {
+  "dev": "nodemon server.js"
   }
 }
