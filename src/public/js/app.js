@@ -1,134 +1,32 @@
 
 const socket = io();
 
- const myFace = document.getElementById("myFace");
- const muteBtn = document.getElementById("mute");
- const cameraBtn = document.getElementById("camera");
- const camerasSelect = document.getElementById("cameras"); 
 
- const welcome = document.getElementById("welcome");
- const call = document.getElementById("call");
-
- call.hidden = true;
-
- let myStream;
- let muted = false;
- let cameraOff = false;
- let roomName; 
- let myPeerConnection
-
- async function getCameras(){
-   try{
-      const devices = navigator.mediaDevices.enumerateDevices();
-      const cameras = (await devices).filter((device) => device.kind === "videoinput");
-      const currentCamera = myStream.getVideoTracks()[0] ;
-      cameras.forEach((camera) => {
-         const option = document.createElement("option");
-         option.value = camera.deviceId;
-         option.innerText = camera.label;
-         if(currentCamera.label === camera.label){
-            option.selected = true;
-         }
-         camerasSelect.appendChild(option); 
-      });
-
-       
-   }catch(e){
-      console.log(e);
-   }
-}
-
- async function getMedia(deviceId) {
-   const initialConstraints = {
-       audio:true, 
-       video: {facingMode:"user"},
-   }; 
-   const cameraConstraints = {
-      audio: true,
-      video: {deviceId: {exact: deviceId }},
-   }
-   try{
-      myStream = await navigator.mediaDevices.getUserMedia( 
-          deviceId? cameraConstraints : initialConstraints
-      );
-      myFace.srcObject = myStream;
-      if(!deviceId){
-         await getCameras();
-      }
-
-   }catch(e){
-      console.log(e);
-   }
- }
+ 
  
 
- function handleMuteClick(){
-   myStream
-      .getAudioTracks()
-      .forEach((track) => (track.enabled = !track.enabled));
+ let myStream;
+ let myPeerConnection
+ let roomName = "1234";
 
-   if(!muted){
-      muteBtn.innerText = "UnMute";
-      muted = true;
-   }else{
-      muteBtn.innerText = "Mute";
-      muted = false;
-   }
- }
- function handleCameraClick(){
-   myStream
-      .getVideoTracks()
-      .forEach((track) =>(track.enabled = !track.enabled));
-   if(cameraOff){
-      cameraBtn.innerText = "Turn Camera Off ";
-      cameraOff = false;
-   }else{
-      cameraBtn.innerText = "Turn Camera On";
-      cameraOff = true;
-   }
- }
-
- async function handleCameraChange(){
-   await  getMedia(camerasSelect.value);
-
-   if(myPeerConnection){
-      const videoTrack = myStream.getVideoTracks()[0];
-      const videoSender = myPeerConnection
-         .getSenders()
-         .find((sender) => sender.track.kind === "video");
-      videoSender.replaceTrack(videoTrack);
-   }
- }
-
- muteBtn.addEventListener("click", handleMuteClick);
- cameraBtn.addEventListener("click", handleCameraClick );
- camerasSelect.addEventListener("input", handleCameraChange);
-
- //Welcom Form 
-
- const welcomForm = welcome.querySelector("form");
 
  async function initCall() {
-   welcome.hidden = true;
-   call.hidden = false;
-   await getMedia(); 
    makeConnection();
  }
 
-async function handleWelcomSubmit(evnet){
-   evnet.preventDefault();
-   const input = welcomForm.querySelector("input");
-   await initCall();
-   socket.emit("join_room", input.value);
-   roomName = input.value;
-   input.value="";
-}
-
- welcomForm.addEventListener("submit", handleWelcomSubmit);
+ document.addEventListener("DOMContentLoaded", function() {
+   const canvas = document.getElementById("canvas");
+   myStream = canvas.captureStream(60); // 30fps로 캡처하여 MediaStream 생성
+   // 웹 페이지가 로드되었을 때 실행할 함수
+   initCall();
+   socket.emit("join_room", roomName);
+});
 
  socket.on("welcome",async () => {
+   console.log("welcome");
    const offer = await myPeerConnection.createOffer();
    myPeerConnection.setLocalDescription(offer);
+   console.log(`My Offer : ${offer}`);
    socket.emit("offer", offer, roomName);
  });
 
@@ -136,15 +34,19 @@ async function handleWelcomSubmit(evnet){
    myPeerConnection.setRemoteDescription(offer);
    const answer = await myPeerConnection.createAnswer();
    myPeerConnection.setLocalDescription(answer);
+   console.log(`My answer : ${answer}`);
    socket.emit("answer", answer, roomName);
  });
 
  socket.on("answer", (answer) => {
+   console.log(`Answer : ${answer}`);
    myPeerConnection.setRemoteDescription(answer);
  });
 
  socket.on("ice", ice => {
    myPeerConnection.addIceCandidate(ice);
+   const iceOth = JSON.stringify(ice);
+   console.log(`ice from other : ${iceOth}`);
  });
 
 
@@ -161,10 +63,9 @@ async function handleWelcomSubmit(evnet){
 
  function handleIce(data){
    socket.emit("ice", data.candidate, roomName);
+   console.log("My iceCandidate"); 
    console.log(data);
  }
-
  function handleAddStream(data){
-   const peerFace = document.getElementById("peerFace");
-   peerFace.srcObject = data.streams[0];
+   const video = data.streams[0];
  }
