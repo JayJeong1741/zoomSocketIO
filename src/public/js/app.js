@@ -6,6 +6,7 @@ const socket = io();
  let myPeerConnection;
  let dataChannel;
  let roomName = "1234";
+ let intervalId = null;
 
 
  async function initCall() {
@@ -14,13 +15,14 @@ const socket = io();
 
  document.addEventListener("DOMContentLoaded", function() {
    const canvas = document.getElementById("canvas");
-   myStream = canvas.captureStream(60); // 30fps로 캡처하여 MediaStream 생성
+   myStream = canvas.captureStream(30); // 30fps로 캡처하여 MediaStream 생성
    // 웹 페이지가 로드되었을 때 실행할 함수
    initCall();
    socket.emit("join_room", roomName);
 });
 
  socket.on("welcome",async () => {
+  initCall();
    console.log("welcome");
    const offer = await myPeerConnection.createOffer();
    myPeerConnection.setLocalDescription(offer);
@@ -52,19 +54,28 @@ const socket = io();
 
  function makeConnection(){
    myPeerConnection = new RTCPeerConnection();
+   console.log('Configuration:', myPeerConnection.getConfiguration());
    myPeerConnection.addEventListener("icecandidate", handleIce);
 
    dataChannel = myPeerConnection.createDataChannel("myDataChannel");
    dataChannel.addEventListener("open", handleData);
+   dataChannel.addEventListener("close", () => { 
+    console.log("Peer Closed");
+    if(intervalId){
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    console.log('Configuration:', myPeerConnection.getConfiguration());
+   });
    myStream
       .getTracks()
       .forEach(track => myPeerConnection.addTrack(track, myStream));
    
  }
 function handleData(){
-   setInterval(() => {
+   intervalId = setInterval(() => {
       dataChannel.send(predictToSend);
-  }, 100); // 1초마다 전송
+  }, 500); // 1초마다 전송
  }
 
  function handleIce(data){
@@ -100,7 +111,7 @@ document.addEventListener("DOMContentLoaded", init);
         maxPredictions = model.getTotalClasses();
 
         // Setup webcam with reduced resolution
-        const size = 300; // 해상도를 낮추어 프레임 속도 개선
+        const size = 400; // 해상도를 낮추어 프레임 속도 개선
         const flip = true;
         webcam = new tmPose.Webcam(size, size, flip);
         await webcam.setup(); // 웹캠 접근 요청
