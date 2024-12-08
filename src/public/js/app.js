@@ -75,7 +75,7 @@ const socket = io();
 function handleData(){
    intervalId = setInterval(() => {
       dataChannel.send(predictToSend);
-  }, 500); // 1초마다 전송
+  }, 1000); // 1초마다 전송
  }
 
  function handleIce(data){
